@@ -1,0 +1,4 @@
+CustomerID,TransactionDate,TransactionType,Amount,ProductCategory,ProductSubcategory,BranchCity,BranchLat,BranchLong,Channel,Currency,CreditCardFees,InsuranceFees,LatePaymentAmount,CustomerScore,MonthlyIncome,CustomerSegment,RecommendedOffer
+99001,2025-06-10 09:00,Card Payment,6980.19,Checking Account,Gold,Seville,37.3891,-5.9845,Branch,EUR,0.0,0.0,0.0,839,5767.68,Middle Income Segment,Mid-tier Savings Booster
+99002,2025-06-11 14:30,Withdrawal,6095.4,Loan,Platinum,Malaga,36.7213,-4.4214,Online,EUR,0.0,29.84,0.0,447,2550.53,Low Income Segment,Financial Literacy Program Access
+99003,2025-06-12 16:45,Fee,3531.68,Credit Card,Platinum,Madrid,40.4168,-3.7038,Branch,USD,4.89,0.0,0.0,395,4309.62,Middle Income Segment,Gold Card with Travel Benefits

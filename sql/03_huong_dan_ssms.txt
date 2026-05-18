@@ -1,0 +1,41 @@
+HƯỚNG DẪN THIẾT LẬP SQL SERVER (SSMS)
+=====================================
+
+1. Cài SQL Server + SSMS (nếu chưa có)
+   - SQL Server Express: https://www.microsoft.com/sql-server/sql-server-downloads
+   - SSMS: https://aka.ms/ssmsfullsetup
+   - ODBC Driver 17 for SQL Server (thường đi kèm SSMS)
+
+2. Tạo database và bảng
+   - Mở SSMS → Connect tới instance (vd: localhost\SQLEXPRESS)
+   - File → Open → File → chọn sql/01_create_database.sql → Execute (F5)
+   - Tiếp tục sql/02_create_tables.sql → Execute (F5)
+
+3. Cấu hình Python
+   - Sao chép .env.example thành .env ở thư mục Graduation_test
+   - Sửa DB_SERVER cho đúng instance SSMS (xem tên trong SSMS khi Connect)
+
+4. Cài thư viện Python
+   cd D:\Graduation_test
+   pip install -r requirements.txt
+
+5. Nhập dữ liệu mới (ghi thẳng vào SQL)
+   streamlit run tools/ingest_app.py
+   File: CSV, JSON, XLSX, DOCX, TXT (tu dong map cot)
+   CLI: python tools/ingest_cli.py samples\mau_import_transaction.csv
+   AI (tuy chon): them OPENAI_API_KEY vao .env, bat --ai-map / --ai-extract
+
+   (Tùy chọn) Import lại từ file CSV bên ngoài:
+   python tools/migrate_csv_to_sql.py D:\duong\dan\file.csv --replace
+
+6. Power BI
+   - Get Data → SQL Server → Server + Database GraduationBanking
+   - Chọn bảng dbo.Transactions, dbo.IsolationOutput, dbo.RankRFM
+
+7. Nạp 2 bảng output giống CSV (lần đầu hoặc sau khi sửa schema)
+   python tools/seed_outputs_from_csv.py
+   (file mẫu: samples/RankRFM.csv, samples/isolation_output.csv)
+
+8. Chạy notebook ETL
+   - Mở ETL_data/bank_transaction.ipynb → Run All
+   - Isolation Forest ghi đè dbo.IsolationOutput; RankRFM lookup giữ 11 dòng Segment/Scores

@@ -1,0 +1,4 @@
+ma_kh|ngay_gd|loai_gd|so_tien|nhom_sp|phan_loai|thanh_pho|vi_do|kinh_do|kenh|tien_te|phi_the|phi_bh|phi_tre|diem_kh|thu_nhap|phan_khuc|goi_y
+99111|2025-07-05 10:00|Withdrawal|4500.00|Mortgage|Standard|Seville|37.3891|-5.9845|Branch|EUR|0|0|0|512|2800.00|Low Income Segment|Financial Literacy Program Access
+99112|2025-07-06 13:25|Deposit|9800.50|Checking Account|Gold|Malaga|36.7213|-4.4214|Online|EUR|0|0|0|780|5500.00|Middle Income Segment|Mid-tier Savings Booster
+99113|2025-07-07 09:50|Fee|120.00|Insurance|Platinum|Madrid|40.4168|-3.7038|Mobile|EUR|0|45.00|0|600|4200.00|Middle Income Segment|Premium Investment Services

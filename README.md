@@ -1,14 +1,6 @@
 # Graduation Banking — Phân tích giao dịch ngân hàng
 
-**Graduation Banking** là hệ thống phân tích dữ liệu giao dịch ngân hàng end-to-end được xây dựng cho đồ án tốt nghiệp. Hệ thống tập trung khoảng **20.000 giao dịch** vào **SQL Server** làm nguồn dữ liệu tập trung, hỗ trợ thu thập và chuẩn hóa dữ liệu từ nhiều định dạng như **CSV, Excel, JSON và Word**.
-
-Trên nền tảng dữ liệu đó, hệ thống thực hiện:
-- **Phân tích hành vi khách hàng** bằng mô hình **RFM**.
-- **Phân tích đa chiều** theo sản phẩm, kênh giao dịch, phí dịch vụ và phân khúc khách hàng.
-- **Phát hiện giao dịch bất thường** bằng mô hình học máy không giám sát **Isolation Forest**.
-- **Trực quan hóa dữ liệu** trên **Power BI** nhằm hỗ trợ các bộ phận vận hành, rủi ro và kinh doanh theo dõi xu hướng, đánh giá rủi ro và định hướng chăm sóc khách hàng.
-
-Hệ thống giúp chuyển đổi quy trình phân tích từ làm việc rời rạc trên các file CSV sang mô hình quản trị dữ liệu tập trung, trực quan và có khả năng mở rộng.
+**Graduation Banking** là hệ thống phân tích dữ liệu giao dịch ngân hàng end-to-end, xây dựng cho đồ án tốt nghiệp. Hệ thống tập trung khoảng **20.000 giao dịch** vào **SQL Server** làm nguồn dữ liệu duy nhất, cho phép **thu thập và chuẩn hóa** từ CSV, Excel, JSON hay cả văn bản Word; **phân tích hành vi** qua phân khúc RFM và khám phá đa chiều (sản phẩm, kênh, phí, phân khúc khách); **phát hiện giao dịch bất thường** bằng mô hình học máy không giám sát (Isolation Forest); và **trình bày kết quả** trên Power BI để bộ phận vận hành, rủi ro và kinh doanh theo dõi xu hướng, đánh giá rủi ro và định hướng chăm sóc khách hàng — thay vì làm việc rời rạc trên file CSV.
 
 ---
 

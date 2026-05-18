@@ -242,37 +242,6 @@ Giao diện này cho phép:
 - Bật/tắt AI extraction cho file DOCX/TXT.
 - Import dữ liệu thủ công hoặc import từ file.
 - Preview dữ liệu trước khi ghi vào database.
-
-## 10. Import dữ liệu bằng CLI
-
-Import file CSV mẫu:
-
-```bash
-python tools/ingest_cli.py samples/mau_import_transaction.csv
-```
-
-Import file Excel:
-
-```bash
-python tools/ingest_cli.py samples/mau_import_transaction.xlsx --sheet 0
-```
-
-Import file DOCX và bật AI extraction nếu cần:
-
-```bash
-python tools/ingest_cli.py samples/mau_import_transaction.docx --ai-extract
-```
-
-Import file và không backup trước khi ghi:
-
-```bash
-python tools/ingest_cli.py samples/mau_import_transaction.csv --no-backup
-```
-
-Import file và bật AI mapping tên cột:
-
-```bash
-python tools/ingest_cli.py samples/mau_import_transaction.csv --ai-map
 ```
 
 ## 11. Import CSV master cũ vào SQL Server
@@ -370,55 +339,6 @@ from ingest_core import table_row_count
 ok, msg = test_connection()
 print(ok, msg)
 print("Rows in Transactions:", table_row_count())
-```
-
-## 16. Một số lỗi thường gặp
-
-### Không kết nối được SQL Server
-
-Kiểm tra:
-
-- SQL Server đang chạy chưa.
-- `DB_SERVER` trong `.env` có đúng instance không.
-- `DB_DRIVER` có khớp với driver đã cài không.
-- Nếu dùng SQL Authentication, `DB_USER` và `DB_PASSWORD` có đúng không.
-
-### Lỗi thiếu cột khi import
-
-File đầu vào cần có đủ các cột theo schema chuẩn, trừ `TransactionID` có thể để trống toàn bộ để hệ thống tự sinh. Nếu tên cột khác chuẩn, bật AI mapping hoặc đổi tên cột theo file mẫu trong `samples/`.
-
-### Lỗi `TransactionID` bị trùng
-
-Nếu file import có sẵn `TransactionID`, các ID đó không được trùng với dữ liệu đã có trong SQL Server. Cách đơn giản là để trống toàn bộ cột `TransactionID` hoặc bỏ cột này để hệ thống tự gán ID tiếp theo.
-
-### File DOCX/TXT không parse được
-
-Ưu tiên dùng file có bảng rõ ràng hoặc dữ liệu dạng CSV/JSON/Excel. Với DOCX/TXT dạng văn bản tự do, có thể bật tùy chọn AI extraction nếu đã cấu hình API key.
-
-## 17. Lưu ý bảo mật
-
-Không đưa các thông tin sau lên GitHub public:
-
-- File `.env` thật.
-- API key của Groq, Google Gemini, OpenAI hoặc dịch vụ khác.
-- Username/password SQL Server.
-- Dữ liệu giao dịch thật nếu có thông tin nhạy cảm.
-
-Nếu đã lỡ commit API key, nên:
-
-1. Revoke/rotate key trong trang quản lý của provider.
-2. Xóa key khỏi repository.
-3. Xóa key khỏi git history nếu repo public.
-4. Thêm `.env` vào `.gitignore`.
-
-Ví dụ `.gitignore` tối thiểu:
-
-```gitignore
-.env
-__pycache__/
-*.pyc
-.ipynb_checkpoints/
-~$*.docx
 ```
 
 ## 18. Tác giả

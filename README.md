@@ -1,197 +1,337 @@
 # Graduation Banking — Phân tích giao dịch ngân hàng
 
-Dự án đồ án tốt nghiệp: lưu trữ dữ liệu giao dịch trên **SQL Server (SSMS)**, phân tích bằng **Jupyter notebook**, nhập liệu qua **Streamlit/CLI**, và trực quan hóa bằng **Power BI**.
+Hệ thống phân tích dữ liệu giao dịch ngân hàng phục vụ đồ án tốt nghiệp: từ **thu thập & chuẩn hóa dữ liệu**, **phân tích hành vi khách hàng**, **phát hiện giao dịch bất thường**, đến **báo cáo trực quan** cho bộ phận vận hành và kinh doanh.
 
 ---
 
-## Tính năng chính
+## Tổng quan dự án
 
-| Thành phần | Mô tả |
-|------------|--------|
-| **SQL Server** | Database `GraduationBanking` — master, backup, kết quả ETL |
-| **Notebook ETL** | RFM, Isolation Forest, PCA, biểu đồ — đọc/ghi SQL |
-| **Import đa định dạng** | CSV, JSON, XLSX, DOCX, TXT → `dbo.Transactions` |
-| **Map cột tự động** | Fuzzy + alias; tùy chọn AI (Groq / Gemini) |
-| **DOCX văn bản** | Parser cục bộ (không cần API) hoặc AI trích xuất |
-| **Power BI** | Kết nối trực tiếp các bảng `dbo.*` |
+### Bối cảnh
+
+Dataset mô phỏng hoạt động tài chính hàng ngày của khách hàng ngân hàng trên nhiều **sản phẩm** (Checking, Loan, Mortgage, Insurance, …), **kênh giao dịch** (Online, Branch, ATM, Mobile) và **chi nhánh** địa lý (các thành phố Tây Ban Nha với tọa độ GPS). Mỗi bản ghi gắn thông tin khách hàng: điểm tín dụng, thu nhập, phân khúc, sản phẩm gợi ý.
+
+Trong môi trường ngân hàng hiện đại, khối lượng giao dịch lớn và đa dạng kênh đòi hỏi:
+
+- Công cụ **tập trung hóa dữ liệu** (thay vì file CSV rời rạc)
+- Khả năng **bổ sung dữ liệu** từ nhiều nguồn (file, form, văn bản)
+- Pipeline **phân tích lặp lại được** (ETL → ML → dashboard)
+
+Dự án giải quyết bài toán đó bằng kiến trúc **SQL Server-centric**: mọi module đọc/ghi qua database `GraduationBanking`.
+
+### Mục tiêu
+
+| Mục tiêu | Cách đạt được |
+|----------|----------------|
+| Phát hiện giao dịch **bất thường** (anomaly) | Isolation Forest, LOF, trực quan PCA |
+| Phân khúc khách hàng theo **hành vi tài chính** | Phân tích RFM (Recency, Frequency, Monetary) |
+| Hiểu **rủi ro & cơ hội bán hàng** | EDA theo segment, fees, channel |
+| **Vận hành dữ liệu** bền vững | SQL master + backup + ingest đa định dạng |
+| **Báo cáo** cho người không chuyên kỹ thuật | Power BI kết nối trực tiếp SQL |
+
+### Phạm vi & đầu ra (deliverables)
+
+| Deliverable | Mô tả |
+|-------------|--------|
+| Database `GraduationBanking` | 4 bảng, schema chuẩn hóa |
+| `tools/` | Ứng dụng nhập liệu Streamlit + CLI |
+| `bank_transaction.ipynb` | Notebook EDA, RFM, anomaly, biểu đồ |
+| `bank_transaction.pbix` | Dashboard Power BI |
+| `samples/` | Dataset gốc + file demo import |
+
+### Công nghệ
+
+| Lớp | Công nghệ |
+|-----|-----------|
+| Database | SQL Server, SSMS, ODBC Driver 17, SQLAlchemy |
+| Backend / ETL | Python 3.10+, pandas, scikit-learn |
+| Ingestion UI | Streamlit |
+| Phân tích | Jupyter, matplotlib, seaborn, plotly |
+| AI (tùy chọn) | Groq, Google Gemini |
+| Báo cáo | Power BI Desktop |
 
 ---
 
-## Cấu trúc thư mục
+## Cấu trúc dự án
 
 ```
 Graduation_test/
-├── ETL_data/
-│   └── bank_transaction.ipynb    # Pipeline phân tích chính
-├── sql/
-│   ├── 01_create_database.sql
-│   └── 02_create_tables.sql
+│
+├── sql/                              # Lớp dữ liệu — khởi tạo schema
+│   ├── 01_create_database.sql        #   Tạo database GraduationBanking
+│   └── 02_create_tables.sql          #   4 bảng: Transactions, Backup, IsolationOutput, RankRFM
+│
+├── samples/                          # Dữ liệu mẫu & dataset gốc
+│   ├── Banking_Transactional_Dataset.csv   # Master ~20k dòng (import lần đầu)
+│   ├── RankRFM.csv                         # Lookup 11 segment RFM
+│   └── mau_import_transaction.*            # Demo import đa định dạng
+│
+├── tools/                            # Lớp ứng dụng — ingest & kết nối SQL
+│   ├── db_config.py                  #   ODBC/SQLAlchemy (.env)
+│   ├── ingest_core.py                #   Validate, backup, ghi Transactions
+│   ├── ingest_app.py                 #   UI Streamlit
+│   ├── ingest_cli.py                 #   Import CLI
+│   ├── file_importer.py              #   Parser đa định dạng
+│   ├── column_mapper.py              #   Map cột → schema chuẩn
+│   ├── text_parser.py                #   Trích xuất DOCX/TXT (offline)
+│   ├── ai_client.py                  #   Groq / Gemini
+│   └── notebook_sql.py               #   Bridge Jupyter ↔ SQL
+│
+├── ETL_data/                         # Lớp phân tích — pipeline ML
+│   └── bank_transaction.ipynb
+│
 ├── PowerBI/
 │   └── bank_transaction.pbix
-├── tools/
-│   ├── db_config.py              # Kết nối SQL (.env)
-│   ├── ingest_core.py            # Validate, backup, ghi SQL
-│   ├── ingest_app.py             # Giao diện Streamlit
-│   ├── ingest_cli.py             # Import dòng lệnh
-│   ├── file_importer.py          # Đọc CSV/JSON/XLSX/DOCX/TXT
-│   ├── column_mapper.py          # Map cột → schema Transactions
-│   ├── text_parser.py            # Trích xuất DOCX/TXT (không AI)
-│   ├── ai_client.py              # Groq / Gemini
-│   └── notebook_sql.py           # Helper đọc/ghi cho notebook
-├── samples/                      # File mẫu import + RankRFM lookup
-├── .env.example                  # Mẫu cấu hình (sao chép thành .env)
+│
+├── .env.example
 ├── requirements.txt
 └── README.md
 ```
 
+| Thư mục | Vai trò |
+|---------|---------|
+| `sql/` | DDL — chạy một lần khi triển khai |
+| `samples/` | Dữ liệu tĩnh; nạp vào SQL rồi dùng qua pipeline |
+| `tools/` | **Ingestion layer** — đưa dữ liệu vào `dbo.Transactions` |
+| `ETL_data/` | **Analytics layer** — ETL, RFM, anomaly detection |
+| `PowerBI/` | **Presentation layer** — đọc SQL, không ghi ngược |
+
 ---
 
-## Yêu cầu hệ thống
+## Kiến trúc hệ thống
 
-- **Windows** (khuyến nghị) với SQL Server + **SSMS**
-- **ODBC Driver 17 for SQL Server**
-- **Python 3.10+**
-- (Tùy chọn) API key **Groq** hoặc **Google AI Studio** cho tính năng AI
+### Mô hình 3 tầng
+
+```mermaid
+flowchart TB
+    subgraph presentation [Presentation Layer]
+        PBI[Power BI]
+        ST[Streamlit ingest_app]
+    end
+
+    subgraph application [Application Layer]
+        CLI[ingest_cli]
+        NB[bank_transaction.ipynb]
+        TOOLS[tools: mapper, parser, ai_client]
+    end
+
+    subgraph data [Data Layer — SQL Server]
+        TXN[(dbo.Transactions)]
+        BAK[(dbo.Transactions_Backup)]
+        RFM[(dbo.RankRFM)]
+        ISO[(dbo.IsolationOutput)]
+    end
+
+    ST --> TOOLS
+    CLI --> TOOLS
+    TOOLS -->|INSERT| TXN
+    TOOLS -.->|snapshot| BAK
+
+    NB -->|SELECT| TXN
+    NB -->|UPSERT| RFM
+    NB -->|UPSERT| ISO
+
+    PBI -->|SELECT| TXN
+    PBI -->|SELECT| RFM
+    PBI -->|SELECT| ISO
+```
+
+### Pipeline dữ liệu
+
+| Pipeline | Đầu vào | Xử lý chính | Đầu ra |
+|----------|---------|-------------|--------|
+| **Ingestion** | CSV, JSON, XLSX, DOCX, TXT, form | Parse → map cột → validate → backup (tùy chọn) → insert | `dbo.Transactions` |
+| **Analytics** | `dbo.Transactions` | Làm sạch, quy USD, EDA, RFM, Isolation Forest, PCA | `dbo.RankRFM`, `dbo.IsolationOutput` |
+| **Reporting** | 3 bảng SQL | Aggregate, filter, visualize | Dashboard Power BI |
+
+```mermaid
+sequenceDiagram
+    participant File as File / Form
+    participant Ingest as tools/ingest
+    participant SQL as SQL Server
+    participant NB as Notebook ETL
+    participant PBI as Power BI
+
+    File->>Ingest: Upload / CLI
+    Ingest->>SQL: INSERT Transactions
+    SQL->>NB: read_sql_safe()
+    NB->>NB: RFM + Isolation Forest
+    NB->>SQL: RankRFM, IsolationOutput
+    SQL->>PBI: Refresh dataset
+```
+
+### Mô hình dữ liệu
+
+**`dbo.Transactions`** — single source of truth (~20.004 giao dịch):
+
+| Nhóm | Cột | Ý nghĩa |
+|------|-----|---------|
+| Giao dịch | `TransactionID`, `TransactionDate`, `TransactionType`, `Amount`, `Currency` | Định danh, thời gian, loại, số tiền |
+| Sản phẩm | `ProductCategory`, `ProductSubcategory` | Checking, Loan, Mortgage, Insurance, … |
+| Địa lý / kênh | `BranchCity`, `BranchLat`, `BranchLong`, `Channel` | Chi nhánh, GPS, Online/Branch/ATM |
+| Phí | `CreditCardFees`, `InsuranceFees`, `LatePaymentAmount` | Các khoản phí liên quan |
+| Khách hàng | `CustomerID`, `CustomerScore`, `MonthlyIncome`, `CustomerSegment`, `RecommendedOffer` | Hồ sơ & gợi ý sản phẩm |
+
+**`dbo.RankRFM`** — dimension lookup (11 segment):
+
+| Segment | Ví dụ mã RFM (`Scores`) |
+|---------|-------------------------|
+| Champions | 555, 554, 544, … |
+| Loyal | 543, 444, 435, … |
+| Potential Loyalist | 553, 551, 452, … |
+| Promising | 525, 524, 425, … |
+| New Customers | 512, 511, 422, … |
+| Need Attention | 535, 534, 443, … |
+| About To Sleep | 331, 321, 221, … |
+| At Risk | 255, 254, 153, … |
+| Cannot Lose Them | 155, 154, 214, … |
+| Hibernating customers | 332, 322, 111, … |
+| Lost customers | 111, 112, 121, … |
+
+**`dbo.IsolationOutput`** — kết quả anomaly mỗi giao dịch:
+
+| Cột | Mô tả |
+|-----|--------|
+| `TransactionID`, `CustomerID` | Khóa nối với master |
+| `IsAnomaly` | 0 = bình thường, 1 = bất thường |
+| `AnomalyLabel` | Nhãn mô tả (vd. Normal / Anomaly) |
+
+**`dbo.Transactions_Backup`** — audit trail: snapshot toàn bộ bảng master trước mỗi lần import (khi bật backup).
 
 ---
 
-## Cài đặt nhanh
+## Mô tả chi tiết từng module
 
-### 1. SQL Server
+### 1. Ingestion (`tools/`)
 
-1. Cài [SQL Server](https://www.microsoft.com/sql-server/sql-server-downloads) và [SSMS](https://aka.ms/ssmsfullsetup).
-2. Trong SSMS, mở và chạy lần lượt (F5):
-   - `sql/01_create_database.sql`
-   - `sql/02_create_tables.sql`
+Cho phép bổ sung dữ liệu vào `dbo.Transactions` mà không cần sửa notebook.
 
-### 2. Python
+| Thành phần | Chức năng |
+|------------|-----------|
+| `file_importer.py` | Đọc CSV, JSON, XLSX, DOCX, TXT, TSV; tự nhận delimiter / bảng Word |
+| `column_mapper.py` | Ánh xạ tên cột (fuzzy + alias EN/VI); tùy chọn AI (Groq/Gemini) |
+| `text_parser.py` | Trích xuất giao dịch từ DOCX/TXT tiếng Việt — **không cần API** |
+| `ingest_core.py` | Validate schema, kiểm tra trùng `TransactionID`, tự gán ID, backup, ghi SQL |
+| `ingest_app.py` | Giao diện web: nhập tay + upload file |
+| `ingest_cli.py` | Dòng lệnh cho automation / import hàng loạt |
+
+**Quy tắc validate:** 19 cột bắt buộc, `TransactionDate` parse được, `TransactionID` không trùng DB (hoặc để trống để tự gán).
+
+### 2. Analytics (`bank_transaction.ipynb`)
+
+Pipeline phân tích chính — đọc SQL, xử lý trong memory, ghi kết quả trở lại SQL.
+
+| Giai đoạn | Nội dung | Thư viện / kỹ thuật |
+|-----------|----------|---------------------|
+| **Load & clean** | Đọc `Transactions`, chuẩn hóa tên cột, giảm memory | pandas, `CFG` class |
+| **EDA** | Phân bố Amount, segment, channel; ma trận tương quan; biểu đồ | matplotlib, seaborn, plotly |
+| **Feature engineering** | Quy đổi USD, mã hóa categorical, flags phí | Custom transforms |
+| **RFM** | Tính R/F/M theo `CustomerID`, gán `rfm_segment` | Business rules + `RankRFM` lookup |
+| **Anomaly detection** | Isolation Forest (`contamination≈1.5%`), so sánh LOF | scikit-learn |
+| **Visualization** | PCA 2D (normal vs anomaly), boxplot, scatter | PCA, plotly |
+| **Export SQL** | `save_rank_rfm_sql()`, `save_isolation_sql()` | `notebook_sql.py` |
+
+### 3. Reporting (`PowerBI/`)
+
+- Kết nối **SQL Server** → database `GraduationBanking`
+- Mô hình star đơn giản: `Transactions` làm fact, `RankRFM` dimension, `IsolationOutput` mở rộng fact
+- **Refresh** sau mỗi lần chạy notebook hoặc import dữ liệu mới
+
+---
+
+## Chạy dự án từ đầu
+
+Thực hiện **theo thứ tự**.
+
+### Bước 0 — Môi trường
 
 ```powershell
 cd D:\Graduation_test
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
-```
-
-### 3. File `.env`
-
-```powershell
 copy .env.example .env
 ```
 
-Chỉnh các biến quan trọng:
+`.env`:
 
 ```env
-DB_SERVER=DESKTOP-XXX          # Tên instance trong SSMS
+DB_SERVER=DESKTOP-XXX
 DB_NAME=GraduationBanking
 DB_DRIVER=ODBC Driver 17 for SQL Server
 DB_TRUSTED_CONNECTION=yes
-
-# AI (tùy chọn) — free: https://console.groq.com
-AI_PROVIDER=auto
-GROQ_API_KEY=your_groq_key
-GOOGLE_API_KEY=your_gemini_key
 ```
-
-> **Lưu ý:** Không commit file `.env` lên Git (chứa mật khẩu / API key).
-
----
-
-## Cơ sở dữ liệu
-
-| Bảng | Vai trò |
-|------|---------|
-| `dbo.Transactions` | Dữ liệu giao dịch master (19 cột, ~20k dòng) |
-| `dbo.Transactions_Backup` | Snapshot trước mỗi lần import |
-| `dbo.IsolationOutput` | Kết quả Isolation Forest: `TransactionID`, `CustomerID`, `IsAnomaly`, `AnomalyLabel` |
-| `dbo.RankRFM` | Bảng tra cứu 11 dòng: `Segment` → `Scores` (không phải RFM từng khách) |
-
----
-
-## Sử dụng
-
-### Nhập dữ liệu (Streamlit)
-
-```powershell
-streamlit run tools/ingest_app.py
-```
-
-- Tab **Nhập tay** hoặc **Import file**
-- Hỗ trợ: `.csv`, `.json`, `.xlsx`, `.xls`, `.docx`, `.txt`, `.tsv`
-- Tùy chọn: backup trước khi ghi, AI map cột, AI trích xuất văn bản
-
-File mẫu trong `samples/`:
-
-| File | Ghi chú |
-|------|---------|
-| `mau_import_transaction.csv` | Cột chuẩn |
-| `mau_import_transaction.json` | Nested `transactions` |
-| `mau_import_transaction.xlsx` | Excel |
-| `mau_import_transaction.txt` | Pipe-delimited, tiếng Việt |
-| `mau_import_transaction.docx` | Văn bản tự do (parser cục bộ hoặc AI) |
-
-### Nhập dữ liệu (CLI)
-
-```powershell
-python tools/ingest_cli.py samples\mau_import_transaction.csv
-python tools/ingest_cli.py samples\mau_import_transaction.docx --ai-extract
-python tools/ingest_cli.py samples\mau_import_transaction.json --ai-map
-```
-
-### Notebook ETL
-
-1. Mở `ETL_data/bank_transaction.ipynb`.
-2. **Kernel → Restart** rồi **Run All** (hoặc chạy lần lượt từ đầu).
-3. Cell import tự thêm `tools/` vào `sys.path`; `CFG.read_sql_safe()` đọc `dbo.Transactions`.
-4. Sau RFM / Isolation Forest: `CFG.save_rank_rfm_sql()`, `CFG.save_isolation_sql()`.
-
-### Power BI
-
-1. **Get Data** → **SQL Server**
-2. Server: tên instance (giống `DB_SERVER`), Database: `GraduationBanking`
-3. Chọn: `dbo.Transactions`, `dbo.IsolationOutput`, `dbo.RankRFM`
-
----
-
-## Cấu hình AI
-
-| Provider | Free? | Cấu hình |
-|----------|-------|----------|
-| **Groq** | Có (khuyến nghị) | `GROQ_API_KEY` — [console.groq.com](https://console.groq.com) |
-| **Google Gemini** | Có (giới hạn) | `GOOGLE_API_KEY` — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
-
-```env
-AI_PROVIDER=auto
-AI_PROVIDER_ORDER=groq,google
-```
-
-- `AI_PROVIDER=auto`: thử lần lượt khi một provider hết quota.
-- DOCX mẫu văn bản: **tắt** «AI trích xuất» vẫn import được (module `text_parser.py`).
-
----
-
-## Xử lý lỗi thường gặp
-
-| Lỗi | Cách xử lý |
-|-----|------------|
-| Không kết nối SQL | Kiểm tra SQL Server đang chạy, `DB_SERVER` trong `.env`, ODBC Driver 17 |
-| `ModuleNotFoundError: notebook_sql` | Chạy lại cell import và cell `CFG` trong notebook (đã fix `sys.path`) |
-| Gemini `429 quota` | Dùng Groq, đổi `GEMINI_MODEL=gemini-2.0-flash-lite`, hoặc tắt AI |
-| SQL `07002` khi insert nhiều dòng | Giảm `chunksize` khi `to_sql` (tối đa ~2100 tham số/câu lệnh) |
-
----
-
-## Kiểm tra kết nối
 
 ```powershell
 python -c "import sys; sys.path.insert(0,'tools'); from db_config import test_connection; print(test_connection())"
 ```
 
-Kết quả mong đợi: `(True, 'DESKTOP-... / GraduationBanking')`.
+### Bước 1 — Tạo database (SSMS)
+
+Chạy F5: `sql/01_create_database.sql` → `sql/02_create_tables.sql`
+
+### Bước 2 — Import dataset gốc
+
+```powershell
+python tools/ingest_cli.py samples\Banking_Transactional_Dataset.csv --no-backup
+```
+
+```powershell
+python -c "import sys; sys.path.insert(0,'tools'); from ingest_core import save_rank_rfm_lookup; print(save_rank_rfm_lookup())"
+```
+
+```sql
+SELECT COUNT(*) FROM dbo.Transactions;   -- ~20004
+```
+
+**Import lại:** `TRUNCATE TABLE dbo.Transactions;` → chạy lại CLI.
+
+### Bước 3 — Notebook ETL/ML
+
+`ETL_data/bank_transaction.ipynb` → **Kernel Restart** → **Run All**
+
+| Bước trong notebook | Ghi SQL |
+|---------------------|---------|
+| `CFG.read_sql_safe()` | Đọc `Transactions` |
+| `CFG.save_rank_rfm_sql()` | Ghi `RankRFM` |
+| `CFG.save_isolation_sql()` | Ghi `IsolationOutput` |
+
+### Bước 4 — Power BI
+
+Mở `PowerBI/bank_transaction.pbix` → Refresh dataset từ SQL Server.
 
 ---
 
-## Tác giả & ghi chú
+## Chạy từng module
 
-- Dữ liệu master và kết quả ETL nằm trên **SQL Server**; `samples/RankRFM.csv` là bảng tra cứu segment (11 dòng).
-- `dbo.IsolationOutput` được notebook ghi sau khi chạy Isolation Forest.
+| Module | Lệnh |
+|--------|------|
+| Streamlit | `streamlit run tools/ingest_app.py` |
+| CLI import | `python tools/ingest_cli.py <file>` |
+| Notebook | Run All `bank_transaction.ipynb` |
+| Power BI | Mở `.pbix` → Refresh |
+
+```powershell
+python tools/ingest_cli.py samples\mau_import_transaction.csv
+python tools/ingest_cli.py samples\mau_import_transaction.docx
+python tools/ingest_cli.py samples\mau_import_transaction.json --ai-map
+```
+
+---
+
+## Cấu hình AI (tùy chọn)
+
+| Provider | Đăng ký |
+|----------|---------|
+| **Groq** (khuyến nghị) | [console.groq.com](https://console.groq.com) |
+| **Gemini** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+
+```env
+AI_PROVIDER=auto
+AI_PROVIDER_ORDER=groq,google
+GROQ_API_KEY=...
+GOOGLE_API_KEY=...
+```
+
+---
+
+

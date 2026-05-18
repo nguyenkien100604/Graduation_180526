@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""AI client: Groq (free), Google Gemini, OpenAI — đọc từ .env."""
+"""AI client: Groq (free) và Google Gemini — đọc từ .env."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ import re
 from typing import Any
 
 # Thứ tự mặc định khi AI_PROVIDER=auto (ưu tiên free tier ổn định)
-_DEFAULT_PROVIDER_ORDER = ("groq", "google", "openai")
+_DEFAULT_PROVIDER_ORDER = ("groq", "google")
 
 
 class AIQuotaError(Exception):
@@ -43,17 +43,11 @@ def google_api_key() -> str:
     )
 
 
-def openai_api_key() -> str:
-    return os.getenv("OPENAI_API_KEY", "").strip()
-
-
 def _provider_has_key(name: str) -> bool:
     if name == "groq":
         return bool(groq_api_key())
     if name == "google":
         return bool(google_api_key())
-    if name == "openai":
-        return bool(openai_api_key())
     return False
 
 
@@ -67,7 +61,7 @@ def ai_available() -> bool:
 
 def _provider_order() -> list[str]:
     pref = os.getenv("AI_PROVIDER", "auto").strip().lower()
-    if pref in ("groq", "google", "openai"):
+    if pref in ("groq", "google"):
         return [pref] if _provider_has_key(pref) else []
     if pref == "auto":
         custom = os.getenv("AI_PROVIDER_ORDER", "").strip()
@@ -184,40 +178,11 @@ def _gemini_generate(system: str, user: str) -> str:
     raise AIQuotaError("Gemini không trả về kết quả.")
 
 
-def _openai_generate(system: str, user: str) -> str:
-    key = openai_api_key()
-    if not key:
-        raise AIQuotaError("Chưa cấu hình OPENAI_API_KEY")
-    try:
-        from openai import OpenAI
-    except ImportError as e:
-        raise AIQuotaError("Thiếu thư viện: pip install openai") from e
-
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-    client = OpenAI(api_key=key)
-    try:
-        resp = client.chat.completions.create(
-            model=model,
-            temperature=0,
-            messages=[
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
-        )
-        return (resp.choices[0].message.content or "").strip()
-    except Exception as e:
-        if _is_quota_error(e):
-            raise AIQuotaError("Đã hết quota OpenAI.") from e
-        raise
-
-
 def _generate_with_provider(provider: str, system: str, user: str) -> str:
     if provider == "groq":
         return _groq_generate(system, user)
     if provider == "google":
         return _gemini_generate(system, user)
-    if provider == "openai":
-        return _openai_generate(system, user)
     raise AIQuotaError(f"Provider không hỗ trợ: {provider}")
 
 

@@ -1,350 +1,197 @@
-# Graduation_180526 — Banking Transaction Analytics Pipeline
+# Graduation Banking — Phân tích giao dịch ngân hàng
 
-Dự án này xây dựng một pipeline phân tích giao dịch ngân hàng từ dữ liệu đầu vào nhiều định dạng đến SQL Server, notebook xử lý dữ liệu và báo cáo Power BI. Mục tiêu chính là giúp người dùng có thể nhập thêm dữ liệu giao dịch mới, chuẩn hóa dữ liệu, chạy lại notebook phân tích và refresh dashboard Power BI với dữ liệu mới nhất.
+Dự án đồ án tốt nghiệp: lưu trữ dữ liệu giao dịch trên **SQL Server (SSMS)**, phân tích bằng **Jupyter notebook**, nhập liệu qua **Streamlit/CLI**, và trực quan hóa bằng **Power BI**.
 
-## 1. Tổng quan hệ thống
+---
 
-Pipeline của dự án có thể được hiểu theo luồng sau:
+## Tính năng chính
 
-```text
-File đầu vào
-CSV / TSV / JSON / XLSX / XLS / DOCX / TXT
-        |
-        v
-tools/file_importer.py
-Đọc file nhiều định dạng
-        |
-        v
-tools/column_mapper.py
-Chuẩn hóa tên cột bằng fuzzy matching hoặc AI mapping tùy chọn
-        |
-        v
-tools/ingest_core.py
-Validate dữ liệu, tự gán TransactionID nếu cần, backup và ghi vào SQL Server
-        |
-        v
-SQL Server
-Transactions / Transactions_Backup / IsolationOutput / RankRFM
-        |
-        v
-ETL_data/bank_transaction.ipynb
-Tiền xử lý, phân tích, phát hiện bất thường, RFM/segmentation
-        |
-        v
-PowerBI/bank_transaction.pbix
-Dashboard báo cáo và trực quan hóa
+| Thành phần | Mô tả |
+|------------|--------|
+| **SQL Server** | Database `GraduationBanking` — master, backup, kết quả ETL |
+| **Notebook ETL** | RFM, Isolation Forest, PCA, biểu đồ — đọc/ghi SQL |
+| **Import đa định dạng** | CSV, JSON, XLSX, DOCX, TXT → `dbo.Transactions` |
+| **Map cột tự động** | Fuzzy + alias; tùy chọn AI (Groq / Gemini) |
+| **DOCX văn bản** | Parser cục bộ (không cần API) hoặc AI trích xuất |
+| **Power BI** | Kết nối trực tiếp các bảng `dbo.*` |
+
+---
+
+## Cấu trúc thư mục
+
 ```
-
-## 2. Chức năng chính
-
-- Tạo database và các bảng phục vụ phân tích giao dịch ngân hàng trên SQL Server.
-- Import dữ liệu mới vào bảng `dbo.Transactions` bằng giao diện Streamlit hoặc dòng lệnh CLI.
-- Hỗ trợ nhiều định dạng đầu vào: `.csv`, `.tsv`, `.json`, `.xlsx`, `.xls`, `.docx`, `.txt`.
-- Chuẩn hóa tên cột đầu vào về schema chuẩn của bảng `Transactions` bằng fuzzy matching.
-- Tùy chọn dùng AI để map tên cột hoặc trích xuất giao dịch từ file văn bản/DOCX.
-- Backup dữ liệu hiện có vào `dbo.Transactions_Backup` trước khi ghi thêm dữ liệu mới.
-- Notebook đọc dữ liệu từ SQL Server, chạy lại các bước phân tích và ghi kết quả đầu ra về SQL.
-- Power BI dashboard có thể refresh lại từ các bảng SQL sau khi dữ liệu được cập nhật.
-
-## 3. Cấu trúc thư mục
-
-```text
-Graduation_180526/
+Graduation_test/
 ├── ETL_data/
-│   └── bank_transaction.ipynb        # Notebook xử lý ETL, phân tích và mô hình
-├── PowerBI/
-│   └── bank_transaction.pbix         # File dashboard Power BI
-├── samples/
-│   ├── RankRFM.csv                   # Bảng tra cứu RFM segment -> score
-│   ├── isolation_output.csv          # Kết quả mẫu cho IsolationOutput
-│   ├── mau_import_transaction.csv    # File mẫu import giao dịch
-│   ├── mau_import_transaction.docx
-│   ├── mau_import_transaction.json
-│   ├── mau_import_transaction.txt
-│   └── mau_import_transaction.xlsx
+│   └── bank_transaction.ipynb    # Pipeline phân tích chính
 ├── sql/
-│   ├── 01_create_database.sql        # Tạo database GraduationBanking
-│   ├── 02_create_tables.sql          # Tạo các bảng chính
-│   ├── 03_huong_dan_ssms.txt         # Hướng dẫn thao tác trên SSMS
-│   ├── 03_upgrade_output_tables.sql  # Nâng cấp bảng output nếu cần
-│   └── 04_fix_output_tables_like_csv.sql
+│   ├── 01_create_database.sql
+│   └── 02_create_tables.sql
+├── PowerBI/
+│   └── bank_transaction.pbix
 ├── tools/
-│   ├── ai_client.py                  # Client AI: Groq / Google Gemini / OpenAI
-│   ├── column_mapper.py              # Map cột đầu vào về schema chuẩn
-│   ├── db_config.py                  # Cấu hình kết nối SQL Server
-│   ├── file_importer.py              # Đọc file CSV/JSON/Excel/DOCX/TXT
-│   ├── ingest_app.py                 # Giao diện Streamlit để import dữ liệu
-│   ├── ingest_cli.py                 # CLI import file vào SQL Server
-│   ├── ingest_core.py                # Logic validate, backup, append SQL
-│   ├── migrate_csv_to_sql.py         # Import CSV master vào SQL
-│   ├── notebook_sql.py               # Helper đọc/ghi SQL cho notebook
-│   ├── seed_outputs_from_csv.py      # Nạp RankRFM và IsolationOutput từ CSV mẫu
-│   └── text_parser.py                # Parser cục bộ cho dữ liệu dạng văn bản
-├── .env.example                      # Mẫu cấu hình môi trường
-└── requirements.txt                  # Danh sách thư viện Python
+│   ├── db_config.py              # Kết nối SQL (.env)
+│   ├── ingest_core.py            # Validate, backup, ghi SQL
+│   ├── ingest_app.py             # Giao diện Streamlit
+│   ├── ingest_cli.py             # Import dòng lệnh
+│   ├── file_importer.py          # Đọc CSV/JSON/XLSX/DOCX/TXT
+│   ├── column_mapper.py          # Map cột → schema Transactions
+│   ├── text_parser.py            # Trích xuất DOCX/TXT (không AI)
+│   ├── ai_client.py              # Groq / Gemini
+│   └── notebook_sql.py           # Helper đọc/ghi cho notebook
+├── samples/                      # File mẫu import + RankRFM lookup
+├── .env.example                  # Mẫu cấu hình (sao chép thành .env)
+├── requirements.txt
+└── README.md
 ```
 
-> Lưu ý: nếu trong thư mục `samples/` có file tạm dạng `~$...docx`, đó thường là file lock tạm của Microsoft Word và có thể xóa trước khi nộp/publish repo.
+---
 
-## 4. Yêu cầu hệ thống
+## Yêu cầu hệ thống
 
-- Python 3.10 trở lên.
-- SQL Server và SQL Server Management Studio (SSMS).
-- ODBC Driver 17 for SQL Server hoặc driver tương thích.
-- Power BI Desktop để mở và refresh file `.pbix`.
-- Git để clone repository.
+- **Windows** (khuyến nghị) với SQL Server + **SSMS**
+- **ODBC Driver 17 for SQL Server**
+- **Python 3.10+**
+- (Tùy chọn) API key **Groq** hoặc **Google AI Studio** cho tính năng AI
 
-## 5. Cài đặt môi trường Python
+---
 
-Clone repository:
+## Cài đặt nhanh
 
-```bash
-git clone https://github.com/nguyenkien100604/Graduation_180526.git
-cd Graduation_180526
-```
+### 1. SQL Server
 
-Tạo môi trường ảo:
+1. Cài [SQL Server](https://www.microsoft.com/sql-server/sql-server-downloads) và [SSMS](https://aka.ms/ssmsfullsetup).
+2. Trong SSMS, mở và chạy lần lượt (F5):
+   - `sql/01_create_database.sql`
+   - `sql/02_create_tables.sql`
 
-```bash
-python -m venv .venv
-```
-
-Kích hoạt môi trường ảo trên Windows PowerShell:
+### 2. Python
 
 ```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Cài thư viện:
-
-```bash
+cd D:\Graduation_test
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## 6. Thiết lập SQL Server
-
-Mở SSMS và chạy các script SQL theo thứ tự:
-
-```text
-sql/01_create_database.sql
-sql/02_create_tables.sql
-```
-
-Hai script còn lại chỉ cần chạy khi bạn đang nâng cấp database cũ hoặc cần đồng bộ lại cấu trúc bảng output:
-
-```text
-sql/03_upgrade_output_tables.sql
-sql/04_fix_output_tables_like_csv.sql
-```
-
-Sau khi chạy, database mặc định là:
-
-```text
-GraduationBanking
-```
-
-Các bảng chính gồm:
-
-- `dbo.Transactions`: dữ liệu giao dịch chính.
-- `dbo.Transactions_Backup`: snapshot backup trước khi import dữ liệu mới.
-- `dbo.IsolationOutput`: kết quả phát hiện bất thường.
-- `dbo.RankRFM`: bảng tra cứu phân khúc RFM.
-
-## 7. Cấu hình file `.env`
-
-Sao chép file mẫu:
+### 3. File `.env`
 
 ```powershell
-Copy-Item .env.example .env
+copy .env.example .env
 ```
 
-Sau đó chỉnh lại nội dung `.env` theo SQL Server trên máy của bạn:
+Chỉnh các biến quan trọng:
 
 ```env
-DB_SERVER=YOUR_SERVER_NAME
+DB_SERVER=DESKTOP-XXX          # Tên instance trong SSMS
 DB_NAME=GraduationBanking
 DB_DRIVER=ODBC Driver 17 for SQL Server
 DB_TRUSTED_CONNECTION=yes
 
-DB_SCHEMA=dbo
-DB_TABLE_TRANSACTIONS=Transactions
-DB_TABLE_BACKUP=Transactions_Backup
-DB_TABLE_ISOLATION=IsolationOutput
-DB_TABLE_RFM=RankRFM
-```
-
-Nếu dùng SQL Authentication thay vì Windows Authentication:
-
-```env
-DB_TRUSTED_CONNECTION=no
-DB_USER=your_username
-DB_PASSWORD=your_password
-```
-
-Cấu hình AI là tùy chọn. Nếu không dùng AI mapping hoặc AI extraction, bạn có thể bỏ qua phần này.
-
-```env
+# AI (tùy chọn) — free: https://console.groq.com
 AI_PROVIDER=auto
-AI_PROVIDER_ORDER=groq,google,openai
-
-GROQ_API_KEY=your_groq_api_key
-GROQ_MODEL=llama-3.1-8b-instant
-
-GOOGLE_API_KEY=your_google_api_key
-GEMINI_MODEL=gemini-2.0-flash-lite
-GEMINI_MODEL_FALLBACKS=gemini-1.5-flash-8b,gemini-2.0-flash-lite
-
-OPENAI_API_KEY=your_openai_api_key
+GROQ_API_KEY=your_groq_key
+GOOGLE_API_KEY=your_gemini_key
 ```
 
-> Không commit file `.env` lên GitHub vì file này có thể chứa thông tin kết nối database và API key.
+> **Lưu ý:** Không commit file `.env` lên Git (chứa mật khẩu / API key).
 
-## 8. Schema dữ liệu giao dịch
+---
 
-Dữ liệu đầu vào sau khi chuẩn hóa sẽ được map về các cột sau:
+## Cơ sở dữ liệu
 
-| Cột | Ý nghĩa |
-|---|---|
-| `TransactionID` | Mã giao dịch. Có thể để trống toàn bộ để hệ thống tự gán. |
-| `CustomerID` | Mã khách hàng. |
-| `TransactionDate` | Ngày/giờ giao dịch. |
-| `TransactionType` | Loại giao dịch. |
-| `Amount` | Giá trị giao dịch. |
-| `ProductCategory` | Nhóm sản phẩm/dịch vụ. |
-| `ProductSubcategory` | Nhóm con sản phẩm/dịch vụ. |
-| `BranchCity` | Thành phố/chi nhánh. |
-| `BranchLat` | Vĩ độ chi nhánh. |
-| `BranchLong` | Kinh độ chi nhánh. |
-| `Channel` | Kênh giao dịch. |
-| `Currency` | Loại tiền tệ. |
-| `CreditCardFees` | Phí thẻ tín dụng. |
-| `InsuranceFees` | Phí bảo hiểm. |
-| `LatePaymentAmount` | Số tiền thanh toán trễ. |
-| `CustomerScore` | Điểm khách hàng. |
-| `MonthlyIncome` | Thu nhập tháng của khách hàng. |
-| `CustomerSegment` | Phân khúc khách hàng. |
-| `RecommendedOffer` | Gợi ý ưu đãi/sản phẩm. |
+| Bảng | Vai trò |
+|------|---------|
+| `dbo.Transactions` | Dữ liệu giao dịch master (19 cột, ~20k dòng) |
+| `dbo.Transactions_Backup` | Snapshot trước mỗi lần import |
+| `dbo.IsolationOutput` | Kết quả Isolation Forest: `TransactionID`, `CustomerID`, `IsAnomaly`, `AnomalyLabel` |
+| `dbo.RankRFM` | Bảng tra cứu 11 dòng: `Segment` → `Scores` (không phải RFM từng khách) |
 
-## 9. Import dữ liệu bằng Streamlit
+---
 
-Chạy giao diện import dữ liệu:
+## Sử dụng
 
-```bash
+### Nhập dữ liệu (Streamlit)
+
+```powershell
 streamlit run tools/ingest_app.py
 ```
 
-Giao diện này cho phép:
+- Tab **Nhập tay** hoặc **Import file**
+- Hỗ trợ: `.csv`, `.json`, `.xlsx`, `.xls`, `.docx`, `.txt`, `.tsv`
+- Tùy chọn: backup trước khi ghi, AI map cột, AI trích xuất văn bản
 
-- Kiểm tra kết nối SQL Server.
-- Xem số dòng hiện có trong bảng `Transactions`.
-- Chọn backup dữ liệu trước khi ghi thêm.
-- Bật/tắt AI mapping tên cột.
-- Bật/tắt AI extraction cho file DOCX/TXT.
-- Import dữ liệu thủ công hoặc import từ file.
-- Preview dữ liệu trước khi ghi vào database.
+File mẫu trong `samples/`:
+
+| File | Ghi chú |
+|------|---------|
+| `mau_import_transaction.csv` | Cột chuẩn |
+| `mau_import_transaction.json` | Nested `transactions` |
+| `mau_import_transaction.xlsx` | Excel |
+| `mau_import_transaction.txt` | Pipe-delimited, tiếng Việt |
+| `mau_import_transaction.docx` | Văn bản tự do (parser cục bộ hoặc AI) |
+
+### Nhập dữ liệu (CLI)
+
+```powershell
+python tools/ingest_cli.py samples\mau_import_transaction.csv
+python tools/ingest_cli.py samples\mau_import_transaction.docx --ai-extract
+python tools/ingest_cli.py samples\mau_import_transaction.json --ai-map
 ```
 
-## 11. Import CSV master cũ vào SQL Server
+### Notebook ETL
 
-Nếu bạn có file CSV master và muốn nạp trực tiếp vào `dbo.Transactions`, dùng:
+1. Mở `ETL_data/bank_transaction.ipynb`.
+2. **Kernel → Restart** rồi **Run All** (hoặc chạy lần lượt từ đầu).
+3. Cell import tự thêm `tools/` vào `sys.path`; `CFG.read_sql_safe()` đọc `dbo.Transactions`.
+4. Sau RFM / Isolation Forest: `CFG.save_rank_rfm_sql()`, `CFG.save_isolation_sql()`.
 
-```bash
-python tools/migrate_csv_to_sql.py path\to\file.csv
+### Power BI
+
+1. **Get Data** → **SQL Server**
+2. Server: tên instance (giống `DB_SERVER`), Database: `GraduationBanking`
+3. Chọn: `dbo.Transactions`, `dbo.IsolationOutput`, `dbo.RankRFM`
+
+---
+
+## Cấu hình AI
+
+| Provider | Free? | Cấu hình |
+|----------|-------|----------|
+| **Groq** | Có (khuyến nghị) | `GROQ_API_KEY` — [console.groq.com](https://console.groq.com) |
+| **Google Gemini** | Có (giới hạn) | `GOOGLE_API_KEY` — [aistudio.google.com/apikey](https://aistudio.google.com/apikey) |
+
+```env
+AI_PROVIDER=auto
+AI_PROVIDER_ORDER=groq,google
 ```
 
-Nếu muốn xóa dữ liệu cũ trong `Transactions` trước khi import:
+- `AI_PROVIDER=auto`: thử lần lượt khi một provider hết quota.
+- DOCX mẫu văn bản: **tắt** «AI trích xuất» vẫn import được (module `text_parser.py`).
 
-```bash
-python tools/migrate_csv_to_sql.py path\to\file.csv --replace
+---
+
+## Xử lý lỗi thường gặp
+
+| Lỗi | Cách xử lý |
+|-----|------------|
+| Không kết nối SQL | Kiểm tra SQL Server đang chạy, `DB_SERVER` trong `.env`, ODBC Driver 17 |
+| `ModuleNotFoundError: notebook_sql` | Chạy lại cell import và cell `CFG` trong notebook (đã fix `sys.path`) |
+| Gemini `429 quota` | Dùng Groq, đổi `GEMINI_MODEL=gemini-2.0-flash-lite`, hoặc tắt AI |
+| SQL `07002` khi insert nhiều dòng | Giảm `chunksize` khi `to_sql` (tối đa ~2100 tham số/câu lệnh) |
+
+---
+
+## Kiểm tra kết nối
+
+```powershell
+python -c "import sys; sys.path.insert(0,'tools'); from db_config import test_connection; print(test_connection())"
 ```
 
-## 12. Nạp dữ liệu output mẫu
+Kết quả mong đợi: `(True, 'DESKTOP-... / GraduationBanking')`.
 
-Để nạp `RankRFM.csv` và `isolation_output.csv` từ thư mục `samples/` vào SQL Server:
+---
 
-```bash
-python tools/seed_outputs_from_csv.py
-```
+## Tác giả & ghi chú
 
-Script này sẽ ghi dữ liệu vào:
-
-- `dbo.RankRFM`
-- `dbo.IsolationOutput`
-
-## 13. Chạy notebook ETL và phân tích
-
-Mở notebook:
-
-```text
-ETL_data/bank_transaction.ipynb
-```
-
-Nếu cần gọi các helper SQL trong notebook, có thể thêm đoạn sau ở đầu notebook:
-
-```python
-from pathlib import Path
-import sys
-
-ROOT = Path.cwd()
-TOOLS = ROOT / "tools" if (ROOT / "tools").exists() else ROOT.parent / "tools"
-sys.path.insert(0, str(TOOLS))
-
-from notebook_sql import (
-    test_sql_connection,
-    load_transactions,
-    load_rank_rfm,
-    load_isolation_output,
-    save_isolation_output,
-    save_rank_rfm_lookup,
-    sql_table_summary,
-)
-```
-
-Luồng làm việc khuyến nghị:
-
-1. Import dữ liệu mới bằng Streamlit hoặc CLI.
-2. Kiểm tra dữ liệu trong `dbo.Transactions`.
-3. Mở và chạy lại notebook `bank_transaction.ipynb`.
-4. Ghi lại kết quả anomaly/RFM vào SQL nếu notebook có tạo output mới.
-5. Mở Power BI và refresh dashboard.
-
-## 14. Refresh Power BI dashboard
-
-Mở file:
-
-```text
-PowerBI/bank_transaction.pbix
-```
-
-Trong Power BI Desktop:
-
-1. Kiểm tra lại data source đang trỏ về SQL Server đúng với `.env`.
-2. Đảm bảo database là `GraduationBanking`.
-3. Refresh các bảng liên quan: `Transactions`, `IsolationOutput`, `RankRFM`.
-4. Kiểm tra dashboard sau khi refresh.
-
-## 15. Kiểm tra nhanh kết nối và số dòng bảng
-
-Có thể chạy nhanh trong Python:
-
-```python
-from pathlib import Path
-import sys
-
-sys.path.insert(0, str(Path("tools").resolve()))
-
-from db_config import test_connection
-from ingest_core import table_row_count
-
-ok, msg = test_connection()
-print(ok, msg)
-print("Rows in Transactions:", table_row_count())
-```
-
-## 18. Tác giả
-
-Repository: `nguyenkien100604/Graduation_180526`
-
-## 19. License
-
-Dự án hiện chưa khai báo license. Nếu muốn chia sẻ công khai, nên bổ sung file `LICENSE` phù hợp với mục đích sử dụng.
+- Dữ liệu master và kết quả ETL nằm trên **SQL Server**; `samples/RankRFM.csv` là bảng tra cứu segment (11 dòng).
+- `dbo.IsolationOutput` được notebook ghi sau khi chạy Isolation Forest.

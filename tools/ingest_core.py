@@ -312,10 +312,6 @@ def rank_rfm_csv_path() -> Path:
     return _samples_dir() / "RankRFM.csv"
 
 
-def isolation_output_csv_path() -> Path:
-    return _samples_dir() / "isolation_output.csv"
-
-
 def load_rank_rfm_lookup() -> pd.DataFrame:
     """Đọc bảng tra cứu Segment/Scores giống RankRFM.csv."""
     path = rank_rfm_csv_path()
@@ -351,11 +347,3 @@ def save_rank_rfm(df: pd.DataFrame | None = None) -> int:
     """Alias — RankRFM.csv là bảng tra cứu, không phải df_rfm theo khách."""
     return save_rank_rfm_lookup(df)
 
-
-def seed_isolation_from_csv(csv_path: Path | None = None) -> int:
-    """Nạp isolation_output.csv vào dbo.IsolationOutput (đúng nội dung file gốc)."""
-    path = csv_path or isolation_output_csv_path()
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    df = pd.read_csv(path)
-    return save_isolation_output(df)

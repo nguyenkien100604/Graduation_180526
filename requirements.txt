@@ -14,5 +14,5 @@ sqlalchemy
 python-dotenv
 openpyxl
 python-docx
-openai
+openai  # SDK cho Groq API (khong dung OpenAI truc tiep)
 google-generativeai

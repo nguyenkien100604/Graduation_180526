@@ -88,7 +88,7 @@ def ai_suggest_mapping(
     source_columns: list[str],
     sample_rows: list[dict[str, Any]],
 ) -> dict[str, str] | None:
-    """Gọi Gemini (Google AI Studio) hoặc OpenAI để gợi ý map cột."""
+    """Gọi Groq hoặc Gemini để gợi ý map cột."""
     from ai_client import AIQuotaError, ai_json_object
 
     try:

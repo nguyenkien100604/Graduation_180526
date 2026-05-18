@@ -58,7 +58,7 @@ def main() -> None:
         "AI map tên cột",
         value=False,
         disabled=not _HAS_AI,
-        help="Groq / Gemini / OpenAI — cấu hình trong .env",
+        help="Groq / Gemini — cấu hình trong .env",
     )
     use_ai_extract = st.sidebar.checkbox(
         "AI trích xuất từ văn bản (DOCX/TXT)",

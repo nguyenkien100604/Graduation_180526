@@ -23,7 +23,7 @@ def main() -> int:
     )
     p.add_argument("file", type=Path, help="Đường dẫn file nguồn")
     p.add_argument("--no-backup", action="store_true")
-    p.add_argument("--ai-map", action="store_true", help="Dùng OpenAI map tên cột (OPENAI_API_KEY)")
+    p.add_argument("--ai-map", action="store_true", help="AI map tên cột (Groq/Gemini trong .env)")
     p.add_argument("--ai-extract", action="store_true", help="AI trích xuất bảng từ DOCX/TXT")
     p.add_argument("--sheet", default="0", help="Tên hoặc index sheet Excel (mặc định 0)")
     args = p.parse_args()

@@ -123,7 +123,7 @@ def _parse_free_text(text: str) -> pd.DataFrame:
 
 
 def ai_extract_table_from_text(text: str) -> pd.DataFrame | None:
-    """Gemini/OpenAI; trả None nếu hết quota (caller dùng parser cục bộ)."""
+    """Groq/Gemini; trả None nếu hết quota (caller dùng parser cục bộ)."""
     if len(text) < 20:
         return None
 

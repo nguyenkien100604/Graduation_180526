@@ -1,18 +1,19 @@
-pandas
-numpy
-matplotlib
-seaborn
-plotly
-colorlog
-scipy
-scikit-learn
-kneed
-ipython
-streamlit
-pyodbc
-sqlalchemy
-python-dotenv
-openpyxl
-python-docx
-openai  # SDK cho Groq API (khong dung OpenAI truc tiep)
-google-generativeai
+# Graduation Banking — Python 3.10+ (đã kiểm tra trên 3.14)
+pandas==2.3.3
+numpy==2.4.3
+matplotlib==3.10.8
+seaborn==0.13.2
+plotly==6.6.0
+colorlog==6.10.1
+scipy==1.17.1
+scikit-learn==1.8.0
+kneed==0.8.6
+ipython==9.11.0
+streamlit==1.55.0
+pyodbc==5.3.0
+sqlalchemy==2.0.48
+python-dotenv==1.2.2
+openpyxl==3.1.5
+python-docx==1.2.0
+openai==2.37.0
+google-generativeai==0.8.6

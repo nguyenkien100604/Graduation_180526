@@ -1,6 +1,6 @@
 # Graduation Banking — Phân tích giao dịch ngân hàng
 
-Hệ thống phân tích dữ liệu giao dịch ngân hàng phục vụ đồ án tốt nghiệp: từ **thu thập & chuẩn hóa dữ liệu**, **phân tích hành vi khách hàng**, **phát hiện giao dịch bất thường**, đến **báo cáo trực quan** cho bộ phận vận hành và kinh doanh.
+**Graduation Banking** là hệ thống phân tích dữ liệu giao dịch ngân hàng end-to-end, xây dựng cho đồ án tốt nghiệp. Hệ thống tập trung khoảng **20.000 giao dịch** vào **SQL Server** làm nguồn dữ liệu duy nhất, cho phép **thu thập và chuẩn hóa** từ CSV, Excel, JSON hay cả văn bản Word; **phân tích hành vi** qua phân khúc RFM và khám phá đa chiều (sản phẩm, kênh, phí, phân khúc khách); **phát hiện giao dịch bất thường** bằng mô hình học máy không giám sát (Isolation Forest); và **trình bày kết quả** trên Power BI để bộ phận vận hành, rủi ro và kinh doanh theo dõi xu hướng, đánh giá rủi ro và định hướng chăm sóc khách hàng — thay vì làm việc rời rạc trên file CSV.
 
 ---
 
@@ -104,7 +104,7 @@ Graduation_test/
 
 ### Mô hình 3 tầng
 
-![Kiến trúc 3 tầng — Presentation, Application, Data Layer](<img/ChatGPT Image May 18, 2026, 10_06_04 PM.png>)
+![Kiến trúc 3 tầng — Presentation, Application, Data Layer](<img/Flow.png>)
 
 *Chú thích trên sơ đồ:* **INSERT** (ingest → `Transactions`) · **SELECT** (notebook/Power BI đọc SQL) · **UPSERT** (notebook ghi `RankRFM`, `IsolationOutput`) · **snapshot** (backup trước import) · **SELECT (Power BI)** (đọc báo cáo).
 

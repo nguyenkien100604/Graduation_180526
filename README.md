@@ -82,6 +82,9 @@ Graduation_test/
 ├── PowerBI/
 │   └── bank_transaction.pbix
 │
+├── img/                              # Sơ đồ kiến trúc (README)
+│   └── ChatGPT Image May 18, 2026, 10_06_04 PM.png
+│
 ├── .env.example
 ├── requirements.txt
 └── README.md
@@ -101,39 +104,9 @@ Graduation_test/
 
 ### Mô hình 3 tầng
 
-```mermaid
-flowchart TB
-    subgraph presentation [Presentation Layer]
-        PBI[Power BI]
-        ST[Streamlit ingest_app]
-    end
+![Kiến trúc 3 tầng — Presentation, Application, Data Layer](<img/ChatGPT Image May 18, 2026, 10_06_04 PM.png>)
 
-    subgraph application [Application Layer]
-        CLI[ingest_cli]
-        NB[bank_transaction.ipynb]
-        TOOLS[tools: mapper, parser, ai_client]
-    end
-
-    subgraph data [Data Layer — SQL Server]
-        TXN[(dbo.Transactions)]
-        BAK[(dbo.Transactions_Backup)]
-        RFM[(dbo.RankRFM)]
-        ISO[(dbo.IsolationOutput)]
-    end
-
-    ST --> TOOLS
-    CLI --> TOOLS
-    TOOLS -->|INSERT| TXN
-    TOOLS -.->|snapshot| BAK
-
-    NB -->|SELECT| TXN
-    NB -->|UPSERT| RFM
-    NB -->|UPSERT| ISO
-
-    PBI -->|SELECT| TXN
-    PBI -->|SELECT| RFM
-    PBI -->|SELECT| ISO
-```
+*Chú thích trên sơ đồ:* **INSERT** (ingest → `Transactions`) · **SELECT** (notebook/Power BI đọc SQL) · **UPSERT** (notebook ghi `RankRFM`, `IsolationOutput`) · **snapshot** (backup trước import) · **SELECT (Power BI)** (đọc báo cáo).
 
 ### Pipeline dữ liệu
 
@@ -142,22 +115,6 @@ flowchart TB
 | **Ingestion** | CSV, JSON, XLSX, DOCX, TXT, form | Parse → map cột → validate → backup (tùy chọn) → insert | `dbo.Transactions` |
 | **Analytics** | `dbo.Transactions` | Làm sạch, quy USD, EDA, RFM, Isolation Forest, PCA | `dbo.RankRFM`, `dbo.IsolationOutput` |
 | **Reporting** | 3 bảng SQL | Aggregate, filter, visualize | Dashboard Power BI |
-
-```mermaid
-sequenceDiagram
-    participant File as File / Form
-    participant Ingest as tools/ingest
-    participant SQL as SQL Server
-    participant NB as Notebook ETL
-    participant PBI as Power BI
-
-    File->>Ingest: Upload / CLI
-    Ingest->>SQL: INSERT Transactions
-    SQL->>NB: read_sql_safe()
-    NB->>NB: RFM + Isolation Forest
-    NB->>SQL: RankRFM, IsolationOutput
-    SQL->>PBI: Refresh dataset
-```
 
 ### Mô hình dữ liệu
 
